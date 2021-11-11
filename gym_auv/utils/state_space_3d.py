@@ -1,5 +1,5 @@
 import numpy as np
-import gym_auv_3d.utils.geomutils as geom
+import gym_auv.utils.geomutils as geom
 from numpy.linalg import inv
 from math import cos, sin
 
@@ -9,30 +9,34 @@ zero3= 0*I3
 g = 9.81
 
 # AUV parameters
-m = 18 #kg
+m = 0.420 #kg
 W = m*g #N
-_B = W+1 #N 
-d = 0.15 #meters
-r = d/2 #meters
-L = 1.08 #meters
-z_G = 0.01 #meters
-r_G = [0,0,z_G] #meters
-thrust_min = 0 #N
-thrust_max = 14 #N
-rudder_max = 30*np.pi/180 #rad
-fins_max = 30*np.pi/180 #rad
-U_max = 2 #m/s
+#_B = W+1 #N 
+#d = 0.15 #meters
+#r = d/2 #meters
+#L = 1.08 #meters
+#z_G = 0.01 #meters
+#r_G = [0,0,z_G] #meters
+thrust_min = -3 #N
+thrust_max = 3 #N
+#rudder_max = 30*np.pi/180 #rad
+#fins_max = 30*np.pi/180 #rad
+#U_max = 2 #m/s
 
 # Moments of inertia
-I_x = (2/5)*m*r**2
-I_y = (1/5)*m*((L/2)**2 + r**2)
-I_z = I_y
-
+#I_x = (2/5)*m*r**2
+#I_y = (1/5)*m*((L/2)**2 + r**2)
+#I_z = I_y
+I_x=0.009
+I_y=I_x
+I_z=I_y
+lamb=0.08#inflow ratio
+l=0.25 #length from rotors to center of mass
 Ig = np.vstack([
     np.hstack([I_x, 0, 0]),
     np.hstack([0, I_y, 0]),
     np.hstack([0, 0, I_z])])
-
+"""
 # Added mass parameters (formulas from Fossen(2020))
 e = 1 - (r/(L/2))**2
 alfa_0 = 2*(1-e**2)/(e**3) * ((1/2)*np.log((1+e)/(1-e))-e)
@@ -59,7 +63,6 @@ M_w = 3.1
 M_q = -9.7
 N_v = -M_w
 N_r = M_q
-
 # Nonlinear damping parameters
 X_uu = -2.4 
 Y_vv = -80
@@ -101,15 +104,15 @@ Z_uqf = -rho*C_LF*S_fin*(-x_fin)
 M_uqf = -x_fin*Z_uqf
 Z_uuds = -rho*C_LF*S_fin
 M_uuds = -x_fin*Z_uuds
-
+"""
 def M_RB():
     M_RB_CG = np.vstack([
         np.hstack([m*I3, zero3]),
         np.hstack([zero3, Ig])
     ])
 
-    M_RB_CO = geom.move_to_CO(M_RB_CG, r_G)
-    return M_RB_CO
+    #M_RB_CO = geom.move_to_CO(M_RB_CG, r_G)
+    return M_RB_CG
 
 
 def M_A():
@@ -118,7 +121,7 @@ def M_A():
 
 
 def M_inv():
-    M = M_RB() + M_A()
+    M = M_RB()# + M_A()
     return inv(M)
 
 
@@ -194,6 +197,7 @@ def D(nu):
 
 
 def B(nu):
+    """
     u = nu[0]
     B = np.array([[1, 0, 0],
                   [0, Y_uudr*(u**2), 0],
@@ -202,15 +206,30 @@ def B(nu):
                   [0, 0, M_uuds*(u**2)],
                   [0, N_uudr*(u**2), 0]])
     return B
-
+    """
+    B=np.array([[0,0,0,0],
+                [0,0,0,0],
+                [1,1,1,1],
+                [0,-l,0,l],
+                [-l,0,l,0],
+                [-lamb,lamb,-lamb,lamb]])
+    return B
 
 def G(eta):
     phi = eta[3]
     theta = eta[4]
+    """
     G = np.array([(W-_B)*sin(theta),
                   -(W-_B)*cos(theta)*sin(phi),
                   -(W-_B)*cos(theta)*cos(phi),
                   z_G*W*cos(theta)*sin(phi),
                   z_G*W*sin(theta),
+                  0])
+    """
+    G = np.array([(W)*sin(theta),
+                  -(W)*cos(theta)*sin(phi),
+                  -(W)*cos(theta)*cos(phi),
+                  0,
+                  0,
                   0])
     return G

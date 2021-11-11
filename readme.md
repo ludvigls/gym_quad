@@ -1,51 +1,38 @@
-# gym-auv
+# Path-following and Collision Avoidance Environment for DRL Control
 
-Python simulation framework for Collision Avoidance for Unmanned Surface Vehicle using Deep Reinforcement Learning.
-
-An explanation of the software structure can be found in Eivind Meyers repository [gym-auv](https://github.com/EivMeyer)
+This repo implements a 6-DOF simulation model for an AUV according to the stable baselines (OpenAI) interface for reinforcement learning control. The environment contains a 3D path, obstacles and an ocean current disturbance. The goal for the agents is to steer the AUV on-path while combating disturbances and avoid obstacles along the trajectory. 
 
 ## Getting Started
-Note: Requires Python 3.7
 
-Note: Pybullet needs Microsoft Visual C++ 14.0. Install it with "Build Tools for Visual Studio".
-
-Note: Stable-Baselines only supports Tensorflow 1.14, Tensorflow 2 support is planned. 
-
-! Install Microsoft MPI (https://docs.microsoft.com/en-us/message-passing-interface/microsoft-mpi) (msmpisetup.exe , not SDK)
-
-Note: Run the following __first__.
-```
-conda install -c conda-forge shapely
-conda install swig
-conda install ffmpeg
-```
-
-Then run 
+To install all packages needed in your virtual environment, run:
 
 ```
-pip install -e ./gym-auv/
+conda env create -f environment.yml
+```
+ 
+### Training an agent:
+
+All hyperparameters and setup can be tuned in the file [train.py](https://github.com/simentha/gym-auv/blob/master/train3d.py) and [__init__.py](https://github.com/simentha/gym-auv/blob/master/gym_auv/__init__.py).
+
+For training an agent, run:
+
+```
+python train.py --exp_id [x]
 ```
 
-You can now execute the script by running 
-```
-python run.py <mode> <env>
-``` 
-The run script can be executed with the -h flag for a comprehensive overview of the available usage modes.
-
-Examples:
-```
-python run.py play TestScenario1-v0
-``` 
-```
-python run.py train MovingObstaclesNoRules-v0
-``` 
-```
-python run.py enjoy MovingObstaclesNoRules-v0 --algo algorithm --agent path\to\agent.pkl
-``` 
+Where x is the experiment id number. 
 
 
-## Known bugs
+## Running an agent in the environment
 
-* terrain.npy is missing from "resources/" because github does not support uploading large files. (reach out for a copy of this file)
-* Lots of deprecation warnings because of TensorFlow 1
-"# quad" 
+For running an agent in any scenario, use:
+
+```
+python run.py --exp_id [x] --scenario [scenario] --controller_scenario [controller_scenario] --controller [y]
+```
+
+Where x is the experiment id number, scenario is what scenario to run, controller_scenario is which scenario the controller was trained in and y is
+which agent number to run. If no y is provided, the agent called "last_model.pkl" is chosen. Scenarios can be either of "beginner", "intermediate",
+"proficient", "advanced", "expert", "test_path", "test_path_current" (Path following with disturbance), "horizontal", "vertical" or "deadend". 
+
+

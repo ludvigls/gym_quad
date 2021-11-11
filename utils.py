@@ -5,7 +5,7 @@ import numpy as np
 
 from pandas import DataFrame
 from cycler import cycler
-from gym_auv_3d.utils.controllers import PI, PID
+from gym_auv.utils.controllers import PI, PID
 
 PI = PI()
 PID_cross = PID(Kp=1.8, Ki=0.01, Kd=0.035)
@@ -15,8 +15,8 @@ PID_cross = PID(Kp=1.8, Ki=0.01, Kd=0.035)
 def parse_experiment_info():
     """Parser for the flags that can be passed with the run/train/test scripts."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--exp_id", type=int, help="Which experiment number to run/train/test")
-    parser.add_argument("--scenario", default="expert", type=str, help="Which scenario to run")
+    parser.add_argument("--exp_id",type=int, help="Which experiment number to run/train/test")
+    parser.add_argument("--scenario", default="beginner", type=str, help="Which scenario to run")
     parser.add_argument("--controller_scenario", default=None, type=str, help="Which scenario the agent was trained in")
     parser.add_argument("--controller", default=None, type=int, help="Which model to load as main controller. Requires only integer")
     args = parser.parse_args()
@@ -30,12 +30,10 @@ def parse_experiment_info():
     if args.controller is not None:
         agent_path = os.path.join(agent_path, "model_" + str(args.controller) + ".pkl")
     else:
-        #agent_path="./log\Experiment None\/beginner\/agents\last_model.pkl"
-        agent_path = os.path.join(agent_path, "best_model.pkl")
-    
+        agent_path = os.path.join(agent_path,"model_3500000.pkl")#"last_model.pkl")
+    print(agent_path)
     return experiment_dir, agent_path, args.scenario
-    
-    #return ".\log\Experiment 15",".\log\Experiment 15\/beginner\/agents\last_model.pkl","beginner"
+
 
 def calculate_IAE(sim_df):
     """
@@ -51,8 +49,7 @@ def simulate_environment(env, agent):
     global error_labels, current_labels, input_labels, state_labels
     state_labels = [r"$N$", r"$E$", r"$D$", r"$\phi$", r"$\theta$", r"$\psi$", r"$u$", r"$v$", r"$w$", r"$p$", r"$q$", r"$r$"]
     current_labels = [r"$u_c$", r"$v_c$", r"$w_c$"]
-    input_labels = [r"$\eta$", r"$\delta_r$", r"$\delta_s$"]
-    input_labels = ["F_1", "F_2", "F_3","F_4"]
+    input_labels = [r"$\eta$", r"$\delta_r$", r"$\delta_s$",r"$\F_4$"]
     error_labels = [r"$\tilde{u}$", r"$\tilde{\chi}$", r"e", r"$\tilde{\upsilon}$", r"h"]
     labels = np.hstack(["Time", state_labels, input_labels, error_labels, current_labels])
     
@@ -81,12 +78,7 @@ def set_default_plot_rc():
     plt.rc('patch', edgecolor='#ffffff')
     plt.rc('lines', linewidth=4)
 
-def plot_reward(sim_df):
-    set_default_plot_rc()
-    ax = sim_df.plot(x="Time", y=[r"$r$"], kind="line")
-    ax.set_xlabel(xlabel="Time [s]",fontsize=14)
-    ax.set_ylabel(ylabel="Reward",fontsize=14)
-    plt.show()
+
 def plot_attitude(sim_df):
     """Plots the state trajectories for the simulation data"""
     set_default_plot_rc()
@@ -127,15 +119,13 @@ def plot_control_inputs(sim_dfs):
     set_default_plot_rc()
     c = ['#EE6666', '#88BB44', '#EECC55']
     for i, sim_df in enumerate(sim_dfs):
-        #control = np.sqrt(sim_df[r"$\delta_r$"]**2+sim_df[r"$\delta_s$"]**2)
-        control = sim_df["F_1"]
-        #plt.plot(sim_df["Time"], sim_df[r"$\delta_s$"], linewidth=4, color=c[i])
-        plt.plot(sim_df["Time"],control)
+        control = np.sqrt(sim_df[r"$\delta_r$"]**2+sim_df[r"$\delta_s$"]**2)
+        plt.plot(sim_df["Time"], sim_df[r"$\delta_s$"], linewidth=4, color=c[i])
     plt.xlabel(xlabel="Time [s]", fontsize=14)
     plt.ylabel(ylabel="Normalized Input", fontsize=14)
     plt.legend(loc="lower right", fontsize=14)
     plt.legend([r"$\lambda_r=0.9$", r"$\lambda_r=0.5$", r"$\lambda_r=0.1$"], loc="upper right", fontsize=14)
-    plt.ylim([-30,30])
+    plt.ylim([-1.25,1.25])
     plt.show()
 
 
@@ -164,7 +154,6 @@ def plot_3d(env, sim_df):
     plt.rc('lines', linewidth=3)
     ax = env.plot3D()#(wps_on=False)
     ax.plot3D(sim_df[r"$N$"], sim_df[r"$E$"], sim_df[r"$D$"], color="#EECC55", label="AUV Path")#, linestyle="dashed")
-    #ax.plot3D(sim_df[r"$D$"],sim_df[r"$N$"], sim_df[r"$E$"], color="#EECC55", label="AUV Path")#, linestyle="dashed")
     ax.set_xlabel(xlabel="North [m]", fontsize=14)
     ax.set_ylabel(ylabel="East [m]", fontsize=14)
     ax.set_zlabel(zlabel="Down [m]", fontsize=14)
