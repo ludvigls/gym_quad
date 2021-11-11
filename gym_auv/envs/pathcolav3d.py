@@ -25,7 +25,7 @@ class PathColav3d(gym.Env):
     def __init__(self, env_config, scenario="beginner"):
         for key in env_config:
             setattr(self, key, env_config[key])
-        self.n_observations = self.n_obs_states + self.n_obs_errors + self.n_obs_inputs + self.sensor_input_size[0]*self.sensor_input_size[1]
+        self.n_observations = self.n_obs_states + self.n_obs_errors + self.n_obs_inputs #+ self.sensor_input_size[0]*self.sensor_input_size[1]
         self.action_space = gym.spaces.Box(low=np.array([-1, -1,-1,-1], dtype=np.float32),
                                            high=np.array([1]*self.n_actuators, dtype=np.float32),
                                            dtype=np.float32)
@@ -214,7 +214,7 @@ class PathColav3d(gym.Env):
             self.update_sensor_readings()
             self.sonar_observations = skimage.measure.block_reduce(self.sensor_readings, (2,2), np.max)
             #self.update_sensor_readings_with_plots() #(Debugging)
-        obs[14:] = self.sonar_observations.flatten()
+        #obs[14:] = self.sonar_observations.flatten()
         return obs
 
 
@@ -227,7 +227,7 @@ class PathColav3d(gym.Env):
 
         reward_roll = self.vessel.roll**2*self.reward_roll + self.vessel.angular_velocity[0]**2*self.reward_rollrate
         #reward_control = action[1]**2*self.reward_use_rudder + action[2]**2*self.reward_use_elevator
-        reward_steady=self.reward_rollrate*(self.vessel.angular_velocity[0]**2+self.vessel.angular_velocity[0]**2+self.vessel.angular_velocity[0]**2)#*0.33
+        reward_steady=self.reward_rollrate*(self.vessel.angular_velocity[0]**2+self.vessel.angular_velocity[1]**2+self.vessel.angular_velocity[2]**2)#*0.33
         reward_path_following = self.chi_error**2*self.reward_heading_error + self.upsilon_error**2*self.reward_pitch_error
         #reward_collision_avoidance = self.penalize_obstacle_closeness()
 
@@ -251,7 +251,7 @@ class PathColav3d(gym.Env):
                 self.success = True
             elif self.collided:
                 print("AUV collided!")
-                print(np.round(self.sensor_readings,2))
+                #print(np.round(self.sensor_readings,2))
                 self.success = False
             print("Episode finished after {} timesteps with reward: {}".format(self.total_t_steps, self.reward.round(1)))
             done = True
