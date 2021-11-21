@@ -71,11 +71,12 @@ def make_env(env_id: str, scenario: str, rank: int, seed: int = 0) -> Callable:
     return _init
 
 if __name__ == '__main__':
-    experiment_dir, _, _ = parse_experiment_info()
+    experiment_dir, agent_path, _ = parse_experiment_info()
     
     for i, scen in enumerate(scenarios):
         agents_dir = os.path.join(experiment_dir, scen, "agents")
         tensorboard_dir = os.path.join(experiment_dir, scen, "tensorboard")
+        #agents_dir=agent_path
         os.makedirs(agents_dir, exist_ok=True)
         os.makedirs(tensorboard_dir, exist_ok=True)
         hyperparams["tensorboard_log"] = tensorboard_dir
@@ -98,15 +99,15 @@ if __name__ == '__main__':
         print("DONE")
 
         print("INITIALIZING AGENT...", end="")
+
         if scen == "beginner":
             agent = PPO('MlpPolicy', env, **hyperparams)
-        elif os.path.exists(os.path.join(experiment_dir, scen, "agents", "last_model.pkl")):
+        elif os.path.exists(os.path.join(experiment_dir, scen, "agents", "last_model1.pkl")):
             agent=PPO.load(agent_path)
         else:
             continual_model = os.path.join(experiment_dir, scenarios[i-1], "agents", "last_model.pkl")
             agent = PPO.load(continual_model, _init_setup_model=True, env=env, **hyperparams)
         print("DONE")
-
         best_mean_reward, n_steps, timesteps = -np.inf, 0, int(15e6)#int(300e3 + i*150e3)
         print("TRAINING FOR", timesteps, "TIMESTEPS")
         agent.learn(total_timesteps=timesteps, tb_log_name="PPO2", callback=callback2)
