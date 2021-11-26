@@ -228,13 +228,16 @@ class PathColav3d(gym.Env):
         reward_roll = self.vessel.roll**2*self.reward_roll + self.vessel.angular_velocity[0]**2*self.reward_rollrate
         #reward_control = action[1]**2*self.reward_use_rudder + action[2]**2*self.reward_use_elevator
         reward_steady=self.reward_rollrate*(self.vessel.angular_velocity[0]**2+self.vessel.angular_velocity[1]**2+self.vessel.angular_velocity[2]**2)#*0.33
-        reward_path_following = self.chi_error**2*self.reward_heading_error + self.upsilon_error**2*self.reward_pitch_error
+        reward_path_following = (self.chi_error**2*self.reward_heading_error + self.upsilon_error**2*self.reward_pitch_error)*2
         #reward_collision_avoidance = self.penalize_obstacle_closeness()
-
+        
+        #print(reward_steady)
+        #print(self.lambda_reward*reward_path_following)
+        #print()
         step_reward = self.lambda_reward*reward_path_following + reward_steady #(1-self.lambda_reward)*reward_collision_avoidance \
                     #+ reward_roll 
         self.reward += step_reward
-
+    
         # Check collision
         for obstacle in self.nearby_obstacles:
             if np.linalg.norm(obstacle.position - self.vessel.position) <= obstacle.radius + self.vessel.safety_radius:
@@ -455,7 +458,8 @@ class PathColav3d(gym.Env):
         waypoints = generate_random_waypoints(self.n_waypoints)
         self.path = QPMI(waypoints)
         init_pos = [np.random.uniform(0,2)*(-5), np.random.normal(0,1)*5, np.random.normal(0,1)*5]
-        init_attitude = np.array([0, self.path.get_direction_angles(0)[1], self.path.get_direction_angles(0)[0]])
+        #init_attitude = np.array([0, self.path.get_direction_angles(0)[1], self.path.get_direction_angles(0)[0]])
+        init_attitude=np.array([0,0,self.path.get_direction_angles(0)[0]])
         initial_state = np.hstack([init_pos, init_attitude])
         return initial_state
 
