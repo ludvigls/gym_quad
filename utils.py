@@ -2,21 +2,20 @@ import argparse
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-
 from pandas import DataFrame
 from cycler import cycler
-from gym_auv.utils.controllers import PI, PID
+#from gym_auv.utils.controllers import PI, PID
 
-PI = PI()
-PID_cross = PID(Kp=1.8, Ki=0.01, Kd=0.035)
-PID_cross = PID(Kp=1.8, Ki=0.01, Kd=0.035)
+#PI = PI()
+#PID_cross = PID(Kp=1.8, Ki=0.01, Kd=0.035)
+#PID_cross = PID(Kp=1.8, Ki=0.01, Kd=0.035)
 
 
 def parse_experiment_info():
     """Parser for the flags that can be passed with the run/train/test scripts."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp_id",type=int, help="Which experiment number to run/train/test")
-    parser.add_argument("--scenario", default="beginner", type=str, help="Which scenario to run")
+    parser.add_argument("--scenario", default="line", type=str, help="Which scenario to run")
     parser.add_argument("--controller_scenario", default=None, type=str, help="Which scenario the agent was trained in")
     parser.add_argument("--controller", default=None, type=int, help="Which model to load as main controller. Requires only integer")
     args = parser.parse_args()
@@ -30,7 +29,7 @@ def parse_experiment_info():
     if args.controller is not None:
         agent_path = os.path.join(agent_path, "model_" + str(args.controller) + ".pkl")
     else:
-        agent_path = os.path.join(agent_path,"last_model1.pkl")
+        agent_path = os.path.join(agent_path,"last_model.pkl")
     print(agent_path)
     return experiment_dir, agent_path, args.scenario
 
@@ -148,12 +147,13 @@ def plot_control_errors(sim_dfs):
 
 def plot_3d(env, sim_df):
     """
-    Plots the AUV path in 3D inside the environment provided.
+    Plots the UAV path in 3D inside the environment provided.
     """
+    
     plt.rcdefaults()
     plt.rc('lines', linewidth=3)
     ax = env.plot3D()#(wps_on=False)
-    ax.plot3D(sim_df[r"$N$"], sim_df[r"$E$"], sim_df[r"$D$"], color="#EECC55", label="AUV Path")#, linestyle="dashed")
+    ax.plot3D(sim_df[r"$N$"], sim_df[r"$E$"], sim_df[r"$D$"], color="#EECC55", label="UAV Path")#, linestyle="dashed")
     ax.set_xlabel(xlabel="North [m]", fontsize=14)
     ax.set_ylabel(ylabel="East [m]", fontsize=14)
     ax.set_zlabel(zlabel="Down [m]", fontsize=14)

@@ -165,7 +165,17 @@ def C_A(nu):
 def C(nu):
     C = C_RB(nu) + C_A(nu)
     return C
-
+def Cv(nu):
+    p=nu[3]
+    q=nu[4]
+    r=nu[5]
+    Cv=np.array([0,
+                 0,
+                 0,
+                 (I_z-I_y)*q*r, #needs to be changed, but currently doesnt affect the quactopter.
+                 (I_x-I_z)*r*p,
+                 0])
+    return Cv
 
 def D(nu):
     u = abs(nu[0])

@@ -107,10 +107,12 @@ class AUV3D():
         eta = self.state[:6]
         nu_r = self.state[6:]
 
-        eta_dot = geom.J(eta).dot(nu_r+nu_c)
+        eta_dot = geom.J(eta).dot(nu_r+nu_c)    
+        #eta_dot[2]=0 #horizontal
         nu_r_dot = ss.M_inv().dot(
             ss.B(nu_r).dot(self.input)
-            - ss.G(eta))
+            - ss.G(eta) #add C(v)
+            - ss.Cv(nu_r))
             #- ss.D(nu_r).dot(nu_r)
             #- ss.C(nu_r).dot(nu_r)
         state_dot = np.hstack([eta_dot, nu_r_dot])
