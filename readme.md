@@ -1,4 +1,4 @@
-# Path-following and Collision Avoidance Environment for DRL Control
+# Path-following Environment for DRL Control
 
 This repo implements a 6-DOF simulation model for a quadcopter according to the stable baselines (OpenAI) interface for reinforcement learning control.
 ## Getting Started
