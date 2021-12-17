@@ -9,7 +9,7 @@ zero3= 0*I3
 g = 9.81
 
 # AUV parameters
-m = 0.420 #kg
+m = 0.5#0.420 #kg
 W = m*g #N
 #_B = W+1 #N 
 #d = 0.15 #meters
@@ -17,8 +17,8 @@ W = m*g #N
 #L = 1.08 #meters
 #z_G = 0.01 #meters
 #r_G = [0,0,z_G] #meters
-thrust_min = -3 #N
-thrust_max = 3 #N
+thrust_min = -6 #N
+thrust_max = 6 #N
 #rudder_max = 30*np.pi/180 #rad
 #fins_max = 30*np.pi/180 #rad
 #U_max = 2 #m/s
@@ -27,11 +27,11 @@ thrust_max = 3 #N
 #I_x = (2/5)*m*r**2
 #I_y = (1/5)*m*((L/2)**2 + r**2)
 #I_z = I_y
-I_x=0.009
+I_x=0.005#0.009
 I_y=I_x
-I_z=I_y
+I_z=0.01#I_y
 lamb=0.08#inflow ratio
-l=0.25 #length from rotors to center of mass
+l=0.5#0.25 #length from rotors to center of mass
 Ig = np.vstack([
     np.hstack([I_x, 0, 0]),
     np.hstack([0, I_y, 0]),
@@ -165,7 +165,17 @@ def C_A(nu):
 def C(nu):
     C = C_RB(nu) + C_A(nu)
     return C
-
+def Cv(nu):
+    p=nu[3]
+    q=nu[4]
+    r=nu[5]
+    Cv=np.array([0,
+                 0,
+                 0,
+                 (I_z-I_y)*q*r, #needs to be changed, but currently doesnt affect the quactopter.
+                 (I_x-I_z)*r*p,
+                 0])
+    return Cv
 
 def D(nu):
     u = abs(nu[0])

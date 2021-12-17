@@ -28,7 +28,7 @@ class Path3D():
 
         x = x_start + seg_distance*np.cos(alpha)*np.cos(beta)
         y = y_start + seg_distance*np.sin(alpha)*np.cos(beta)
-        z = z_start - seg_distance*np.sin(beta)
+        z = 0#z_start - seg_distance*np.sin(beta) horizontal
 
         return np.array([x,y,z])
 
@@ -105,7 +105,7 @@ def generate_random_waypoints(nwaypoints):
 
         x = waypoints[i][0] + dist*np.cos(azimuth)*np.cos(elevation)
         y = waypoints[i][1] + dist*np.sin(azimuth)*np.cos(elevation)
-        z = waypoints[i][2] - dist*np.sin(elevation)
+        z = 0#waypoints[i][2] - dist*np.sin(elevation)#horizontal
         wp = np.array([x, y, z])
         waypoints.append(wp)
     return waypoints
