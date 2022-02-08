@@ -1,0 +1,14 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  Path Following for Quadcopters using Deep
+  Reinforcement Learning
+message: Cite in scientific papers
+type: software
+authors:
+  - given-names: Ludvig Løken
+    family-names: Sundøen
+    email: ludvigls@stud.ntnu.no
+    affiliation: Norwegian University of Science and Technology
