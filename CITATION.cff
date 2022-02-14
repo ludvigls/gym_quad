@@ -1,0 +1,42 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  Path Following for Quadcopters using Deep
+  Reinforcement Learning
+message: Cite in scientific papers
+type: software
+authors:
+  - given-names: Ludvig Løken
+    family-names: Sundøen
+    email: ludvigls@stud.ntnu.no
+    affiliation: Norwegian University of Science and Technology
+url: 'https://github.com/ludvigls/gym_quad'
+abstract: >-
+  This paper presents an approach to path following
+  for quadcopters using deep reinforcement learning.
+  Classical control methods depend on complicated
+  mathematical insight on the environment. Model-free
+  deep reinforcement learning methods do not require
+  mathematical insight into the dynamics and can
+  potentially control agents even in complex
+  environments. Research on reinforcement learning in
+  control applications has only kicked off in the
+  last few years. 
+
+  The contribution of this paper is presenting a deep
+  reinforcement learning controller for path
+  following on quadcopters. A reinforcement learning
+  framework based on previous work on autonomous
+  ships and underwater vehicles is set up.
+  Additionally, a curriculum learning approach for
+  training is implemented to increase the
+  controller's performance. 
+
+  The algorithm is demonstrated by analyzing single
+  runs through the scenarios and by measuring its
+  error over a large number of simulations. This
+  shows that using deep reinforcement learning with
+  curriculum learning can achieve great performance
+  for quadcopters doing path following. 
