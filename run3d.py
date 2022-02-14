@@ -20,7 +20,7 @@ if __name__ == "__main__":
     sim_df = simulate_environment(env, agent)
     sim_df.to_csv(r'simdata.csv')
     calculate_IAE(sim_df)
-    #plot_attitude(sim_df)
+    plot_attitude(sim_df)
     #plot_velocity(sim_df)
     #plot_angular_velocity(sim_df)
     #plot_control_inputs([sim_df])

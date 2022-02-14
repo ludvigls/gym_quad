@@ -6,7 +6,7 @@ import skimage.measure
 
 from gym_auv.objects.auv3d import AUV3D
 from gym_auv.objects.current3d import Current
-from gym_auv.objects.QPMI import QPMI, generate_random_waypoints
+from gym_auv.objects.QPMI import QPMI, generate_random_waypoints,helix_param
 from gym_auv.objects.path3d import Path3D
 from gym_auv.objects.obstacle3d import Obstacle
 from gym_auv.utils.controllers import PI, PID
@@ -47,6 +47,8 @@ class PathColav3d(gym.Env):
             "line": self.scenario_line,
             "horizontal": self.scenario_horizontal,
             "3d": self.scenario_3d,
+            "3d_new": self.scenario_3d_new,
+            "helix": self.scenario_helix,
             "intermediate": self.scenario_intermediate,
             "proficient": self.scenario_proficient,
             "advanced": self.scenario_advanced,
@@ -452,7 +454,16 @@ class PathColav3d(gym.Env):
             if np.linalg.norm(obstacle.position - new_obstacle.position) < new_obstacle.radius + obstacle.radius + 5:
                 overlaps = True
         return overlaps
-
+    def scenario_helix(self):
+        initial_state = np.zeros(6)
+        self.current = Current(mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0) #Current object with zero velocity
+        waypoints = generate_random_waypoints(self.n_waypoints,'helix')
+        self.path = QPMI(waypoints)
+        init_pos = helix_param(0)
+        #init_attitude = np.array([0, self.path.get_direction_angles(0)[1], self.path.get_direction_angles(0)[0]])
+        init_attitude=np.array([0,0,self.path.get_direction_angles(0)[0]])
+        initial_state = np.hstack([init_pos, init_attitude])
+        return initial_state
     def scenario_line(self):
         initial_state = np.zeros(6)
         self.current = Current(mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0) #Current object with zero velocity
@@ -474,6 +485,16 @@ class PathColav3d(gym.Env):
         initial_state = np.hstack([init_pos, init_attitude])
         return initial_state
 
+    def scenario_3d_new(self):
+        initial_state = np.zeros(6)
+        self.current = Current(mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0) #Current object with zero velocity
+        waypoints = generate_random_waypoints(self.n_waypoints,'3d_new')
+        self.path = QPMI(waypoints)
+        init_pos = [np.random.uniform(0,2)*(-5), np.random.normal(0,1)*5, np.random.normal(0,1)*5]
+        #init_attitude = np.array([0, self.path.get_direction_angles(0)[1], self.path.get_direction_angles(0)[0]])
+        init_attitude=np.array([0,0,self.path.get_direction_angles(0)[0]])
+        initial_state = np.hstack([init_pos, init_attitude])
+        return initial_state
     def scenario_3d(self):
         initial_state = np.zeros(6)
         self.current = Current(mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0) #Current object with zero velocity
