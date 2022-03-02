@@ -25,14 +25,13 @@ class PathColav3d(gym.Env):
     def __init__(self, env_config, scenario="line"):
         for key in env_config:
             setattr(self, key, env_config[key])
-        self.n_observations = self.n_obs_states + self.n_obs_errors + self.n_obs_inputs #+ self.sensor_input_size[0]*self.sensor_input_size[1]
+        self.n_observations = self.n_obs_states + self.n_obs_errors + self.n_obs_inputs + self.sensor_input_size[0]*self.sensor_input_size[1]
         self.action_space = gym.spaces.Box(low=np.array([-1, -1,-1,-1], dtype=np.float32),
                                            high=np.array([1]*self.n_actuators, dtype=np.float32),
                                            dtype=np.float32)
         self.observation_space = gym.spaces.Box(low=np.array([-1]*self.n_observations, dtype=np.float32),
                                                 high=np.array([1]*self.n_observations, dtype=np.float32),
                                                 dtype=np.float32)
-        
         self.scenario = scenario
         
         self.n_sensor_readings = self.sensor_suite[0]*self.sensor_suite[1]
@@ -174,7 +173,7 @@ class PathColav3d(gym.Env):
             # Check if a waypoint is passed
             k = self.path.get_u_index(self.prog)
             if k > self.waypoint_index:
-                print("Passed waypoint {:d}".format(k+1))
+                #print("Passed waypoint {:d}".format(k+1))
                 self.waypoint_index = k
         
         # Calculate reward based on observation and actions
@@ -212,13 +211,14 @@ class PathColav3d(gym.Env):
         obs[12] = self.chi_error
         obs[13] = self.upsilon_error
 
-        # Update nearby obstacles and calculate distances
-        #if self.total_t_steps % self.update_sensor_step == 0:
-            #self.update_nearby_obstacles()
-            #self.update_sensor_readings()
-            #self.sonar_observations = skimage.measure.block_reduce(self.sensor_readings, (2,2), np.max)
+#        Update nearby obstacles and calculate distances
+        if self.total_t_steps % self.update_sensor_step == 0:
+            self.update_nearby_obstacles()
+            self.update_sensor_readings()
+            self.sonar_observations = skimage.measure.block_reduce(self.sensor_readings, (2,2), np.max)
             #self.update_sensor_readings_with_plots() #(Debugging)
-        #obs[14:] = self.sonar_observations.flatten()
+        obs[14:] = self.sonar_observations.flatten()
+        #print(obs)
         return obs
 
 
@@ -229,23 +229,27 @@ class PathColav3d(gym.Env):
         done = False
         step_reward = 0 
 
-        reward_roll = self.vessel.roll**2*self.reward_roll + self.vessel.angular_velocity[0]**2*self.reward_rollrate
+        #reward_roll = self.vessel.roll**2*self.reward_roll + self.vessel.angular_velocity[0]**2*self.reward_rollrate
         #reward_control = action[1]**2*self.reward_use_rudder + action[2]**2*self.reward_use_elevator
         reward_steady=self.reward_rollrate*(self.vessel.angular_velocity[0]**2+self.vessel.angular_velocity[1]**2+self.vessel.angular_velocity[2]**2)#*0.33
         reward_path_following = 3*(self.chi_error**2*self.reward_heading_error + self.upsilon_error**2*self.reward_pitch_error)*2
-        #reward_collision_avoidance = self.penalize_obstacle_closeness()
+        reward_collision_avoidance = self.penalize_obstacle_closeness()
         
+        #print("new timestep")
         #print(reward_steady)
         #print(self.lambda_reward*reward_path_following)
+        #print((1-self.lambda_reward)*reward_collision_avoidance)
+        
         #print()
-        step_reward = self.lambda_reward*reward_path_following + reward_steady #(1-self.lambda_reward)*reward_collision_avoidance \
+        #step_reward = self.lambda_reward*reward_path_following + reward_steady (1-self.lambda_reward)+reward_collision_avoidance #\
+        step_reward = (1-self.lambda_reward)*reward_collision_avoidance+self.lambda_reward*reward_path_following + reward_steady
                     #+ reward_roll 
         self.reward += step_reward
     
         # Check collision
-        #for obstacle in self.nearby_obstacles:
-        #    if np.linalg.norm(obstacle.position - self.vessel.position) <= obstacle.radius + self.vessel.safety_radius:
-        #        self.collided = True
+        for obstacle in self.nearby_obstacles:
+            if np.linalg.norm(obstacle.position - self.vessel.position) <= obstacle.radius + self.vessel.safety_radius:
+                self.collided = True
         
         end_cond_1 = self.reward < self.min_reward
         end_cond_2 = self.total_t_steps >= self.max_t_steps
@@ -256,10 +260,10 @@ class PathColav3d(gym.Env):
             if end_cond_3:
                 print("AUV reached target!")
                 self.success = True
-            #elif self.collided:
-            #    print("AUV collided!")
-            #    #print(np.round(self.sensor_readings,2))
-            #    self.success = False
+            elif self.collided:
+                print("AUV collided!")
+                #print(np.round(self.sensor_readings,2))
+                self.success = False
             #print("Episode finished after {} timesteps with reward: {}".format(self.total_t_steps, self.reward.round(1)))
             done = True
         return done, step_reward
@@ -533,7 +537,7 @@ class PathColav3d(gym.Env):
         #print("\t\t\tgot intermediate (", len(self.obstacles), " obstacles)", sep="")
         lengths = np.random.uniform(self.path.length*1/3, self.path.length*2/3, self.n_pro_obstacles)
         #print("\t\t\tgot", len(lengths), "lengths")
-        print("")
+        #print("")
         n_checks = 0
         while len(self.obstacles) < self.n_pro_obstacles and n_checks < 1000:
             for l in lengths:

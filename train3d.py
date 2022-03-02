@@ -133,7 +133,8 @@ from utils import parse_experiment_info
 from typing import Callable
 
 scenarios = ["line","horizontal", "3d","3d_new"]#, "proficient", "advanced", "expert"]
-
+#scenarios = ["horizontal", "3d","3d_new"]#, "proficient", "advanced", "expert"]
+#scenarios=['3d','3d_new']
 """
 hyperparams = {
     'n_steps': 1024,
@@ -220,10 +221,14 @@ if __name__ == '__main__':
             agent = PPO('MlpPolicy', env, **hyperparams)
         else:
             continual_model = os.path.join(experiment_dir, scenarios[i-1], "agents", "last_model.pkl")
+        #continual_model = os.path.join(experiment_dir, "horizontal", "agents", "last_model.pkl")
             agent = PPO.load(continual_model, _init_setup_model=True, env=env, **hyperparams)
         print("DONE")
 
-        best_mean_reward, n_steps, timesteps = -np.inf, 0, int(30e6)# + i*150e3)
+        if i<2:
+            best_mean_reward, n_steps, timesteps = -np.inf, 0, int(15e6)# + i*150e3)
+        else:
+            best_mean_reward, n_steps, timesteps = -np.inf, 0, int(30e6)
         print("TRAINING FOR", timesteps, "TIMESTEPS")
         agent.learn(total_timesteps=timesteps, tb_log_name="PPO2", callback=callback2)
         print("FINISHED TRAINING AGENT IN", scen.upper())
