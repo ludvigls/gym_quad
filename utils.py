@@ -29,7 +29,7 @@ def parse_experiment_info():
     if args.controller is not None:
         agent_path = os.path.join(agent_path, "model_" + str(args.controller) + ".pkl")
     else:
-        agent_path = os.path.join(agent_path,"model_12650000.pkl")#"last_model.pkl")
+        agent_path = os.path.join(agent_path,"last_model.pkl")
     print(agent_path)
     return experiment_dir, agent_path, args.scenario
 

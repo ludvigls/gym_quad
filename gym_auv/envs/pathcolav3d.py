@@ -197,20 +197,20 @@ class PathColav3d(gym.Env):
         Returns observations of the environment. 
         """
         obs = np.zeros((self.n_observations,))
-        obs[0] = np.clip(self.vessel.relative_velocity[0] / 2, -1, 1)
-        obs[1] = np.clip(self.vessel.relative_velocity[1] / 0.3, -1, 1)
-        obs[2] = np.clip(self.vessel.relative_velocity[2] / 0.3, -1, 1)
+        obs[0] =self.vessel.relative_velocity[0]# np.clip(self.vessel.relative_velocity[0] / 2, -1, 1)
+        obs[1] = self.vessel.relative_velocity[1]#np.clip(self.vessel.relative_velocity[1] / 0.3, -1, 1)
+        obs[2] =self.vessel.relative_velocity[2]# np.clip(self.vessel.relative_velocity[2] / 0.3, -1, 1)
         obs[3] = np.clip(self.vessel.roll / np.pi, -1, 1)
         obs[4] = np.clip(self.vessel.pitch / np.pi, -1, 1)
         obs[5] = np.clip(self.vessel.heading / np.pi, -1, 1)
-        obs[6] = np.clip(self.vessel.angular_velocity[0] / 1.2, -1, 1)
-        obs[7] = np.clip(self.vessel.angular_velocity[1] / 0.4, -1, 1)
-        obs[8] = np.clip(self.vessel.angular_velocity[2] / 0.4, -1, 1)
-        obs[9] = np.clip(nu_c[0] / 1, -1, 1)
-        obs[10] = np.clip(nu_c[1] / 1, -1, 1)
-        obs[11] = np.clip(nu_c[2] / 1, -1, 1)
-        obs[12] = self.chi_error
-        obs[13] = self.upsilon_error
+        obs[6] =self.vessel.angular_velocity[0]# np.clip(self.vessel.angular_velocity[0] / 1.2, -1, 1)
+        obs[7] = self.vessel.angular_velocity[1]#np.clip(self.vessel.angular_velocity[1] / 0.4, -1, 1)
+        obs[8] =self.vessel.angular_velocity[2]# np.clip(self.vessel.angular_velocity[2] / 0.4, -1, 1)
+        #obs[9] = np.clip(nu_c[0] / 1, -1, 1)
+        #obs[10] = np.clip(nu_c[1] / 1, -1, 1)
+        #obs[11] = np.clip(nu_c[2] / 1, -1, 1)
+        obs[9] = self.e#self.chi_error
+        obs[10] = self.h#self.upsilon_error
 
         # Update nearby obstacles and calculate distances
         #if self.total_t_steps % self.update_sensor_step == 0:
@@ -232,7 +232,7 @@ class PathColav3d(gym.Env):
         reward_roll = self.vessel.roll**2*self.reward_roll + self.vessel.angular_velocity[0]**2*self.reward_rollrate
         #reward_control = action[1]**2*self.reward_use_rudder + action[2]**2*self.reward_use_elevator
         reward_steady=self.reward_rollrate*(self.vessel.angular_velocity[0]**2+self.vessel.angular_velocity[1]**2+self.vessel.angular_velocity[2]**2)#*0.33
-        reward_path_following = 3*(self.chi_error**2*self.reward_heading_error + self.upsilon_error**2*self.reward_pitch_error)*2
+        reward_path_following = 0.5*(self.h**2+self.e**2)#3*(self.chi_error**2*self.reward_heading_error + self.upsilon_error**2*self.reward_pitch_error)*2
         #reward_collision_avoidance = self.penalize_obstacle_closeness()
         
         #print(reward_steady)
