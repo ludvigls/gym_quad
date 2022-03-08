@@ -203,7 +203,7 @@ if __name__ == '__main__':
             print(experiment_dir, "ALREADY FINISHED TRAINING IN,", scen.upper(), "SKIPPING TO THE NEXT STAGE")
             continue
 
-        num_envs = 2
+        num_envs = 16
         print("INITIALIZING", num_envs, scen.upper(), "ENVIRONMENTS...", end="")
         if num_envs > 1:
             env = SubprocVecEnv(
@@ -221,14 +221,14 @@ if __name__ == '__main__':
             agent = PPO('MlpPolicy', env, **hyperparams)
         else:
             continual_model = os.path.join(experiment_dir, scenarios[i-1], "agents", "last_model.pkl")
-        #continual_model = os.path.join(experiment_dir, "horizontal", "agents", "last_model.pkl")
+            #continual_model = os.path.join(experiment_dir, "3d", "agents", "last_model.pkl")
             agent = PPO.load(continual_model, _init_setup_model=True, env=env, **hyperparams)
         print("DONE")
 
-        if i<2:
-            best_mean_reward, n_steps, timesteps = -np.inf, 0, int(15e6)# + i*150e3)
-        else:
-            best_mean_reward, n_steps, timesteps = -np.inf, 0, int(30e6)
+        #if i<2:
+        #    best_mean_reward, n_steps, timesteps = -np.inf, 0, int(15e6)# + i*150e3)
+        #else:
+        best_mean_reward, n_steps, timesteps = -np.inf, 0, int(30e6)
         print("TRAINING FOR", timesteps, "TIMESTEPS")
         agent.learn(total_timesteps=timesteps, tb_log_name="PPO2", callback=callback2)
         print("FINISHED TRAINING AGENT IN", scen.upper())

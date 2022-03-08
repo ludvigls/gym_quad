@@ -218,7 +218,7 @@ class PathColav3d(gym.Env):
             self.sonar_observations = skimage.measure.block_reduce(self.sensor_readings, (2,2), np.max)
             #self.update_sensor_readings_with_plots() #(Debugging)
         obs[14:] = self.sonar_observations.flatten()
-        #print(obs)
+
         return obs
 
 
