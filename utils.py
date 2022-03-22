@@ -29,7 +29,7 @@ def parse_experiment_info():
     if args.controller is not None:
         agent_path = os.path.join(agent_path, "model_" + str(args.controller) + ".pkl")
     else:
-        agent_path = os.path.join(agent_path,"model_12650000.pkl")#"last_model.pkl")
+        agent_path = os.path.join(agent_path,"last_model.pkl")
     print(agent_path)
     return experiment_dir, agent_path, args.scenario
 
@@ -158,9 +158,7 @@ def plot_3d(env, sim_df):
     ax.set_ylabel(ylabel="East [m]", fontsize=14)
     ax.set_zlabel(zlabel="Down [m]", fontsize=14)
     ax.legend(loc="upper right", fontsize=14)
-    ax.set_ylim([-2,2])
-    ax.set_zlim([-2,2])
-    plt.savefig('line.pdf')
+    plt.savefig('3d.pdf')
     plt.show()
 
 

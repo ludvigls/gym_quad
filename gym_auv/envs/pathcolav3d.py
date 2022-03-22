@@ -213,10 +213,10 @@ class PathColav3d(gym.Env):
         obs[13] = self.upsilon_error
 
         # Update nearby obstacles and calculate distances
-        #if self.total_t_steps % self.update_sensor_step == 0:
-            #self.update_nearby_obstacles()
-            #self.update_sensor_readings()
-            #self.sonar_observations = skimage.measure.block_reduce(self.sensor_readings, (2,2), np.max)
+        if self.total_t_steps % self.update_sensor_step == 0:
+            self.update_nearby_obstacles()
+            self.update_sensor_readings()
+            self.sonar_observations = skimage.measure.block_reduce(self.sensor_readings, (2,2), np.max)
             #self.update_sensor_readings_with_plots() #(Debugging)
         #obs[14:] = self.sonar_observations.flatten()
         return obs
@@ -233,7 +233,7 @@ class PathColav3d(gym.Env):
         #reward_control = action[1]**2*self.reward_use_rudder + action[2]**2*self.reward_use_elevator
         reward_steady=self.reward_rollrate*(self.vessel.angular_velocity[0]**2+self.vessel.angular_velocity[1]**2+self.vessel.angular_velocity[2]**2)#*0.33
         reward_path_following = 3*(self.chi_error**2*self.reward_heading_error + self.upsilon_error**2*self.reward_pitch_error)*2
-        #reward_collision_avoidance = self.penalize_obstacle_closeness()
+        reward_collision_avoidance = self.penalize_obstacle_closeness()
         
         #print(reward_steady)
         #print(self.lambda_reward*reward_path_following)
@@ -243,9 +243,9 @@ class PathColav3d(gym.Env):
         self.reward += step_reward
     
         # Check collision
-        #for obstacle in self.nearby_obstacles:
-        #    if np.linalg.norm(obstacle.position - self.vessel.position) <= obstacle.radius + self.vessel.safety_radius:
-        #        self.collided = True
+        for obstacle in self.nearby_obstacles:
+            if np.linalg.norm(obstacle.position - self.vessel.position) <= obstacle.radius + self.vessel.safety_radius:
+                self.collided = True
         
         end_cond_1 = self.reward < self.min_reward
         end_cond_2 = self.total_t_steps >= self.max_t_steps
@@ -256,10 +256,10 @@ class PathColav3d(gym.Env):
             if end_cond_3:
                 print("AUV reached target!")
                 self.success = True
-            #elif self.collided:
-            #    print("AUV collided!")
-            #    #print(np.round(self.sensor_readings,2))
-            #    self.success = False
+            elif self.collided:
+                print("AUV collided!")
+                #print(np.round(self.sensor_readings,2))
+                self.success = False
             #print("Episode finished after {} timesteps with reward: {}".format(self.total_t_steps, self.reward.round(1)))
             done = True
         return done, step_reward

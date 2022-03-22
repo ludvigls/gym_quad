@@ -132,7 +132,7 @@ from utils import parse_experiment_info
 
 from typing import Callable
 
-scenarios = ["line","horizontal", "3d","3d_new"]#, "proficient", "advanced", "expert"]
+scenarios = ["line","horizontal","3d","3d_new"]#, "proficient", "advanced", "expert"]
 
 """
 hyperparams = {
@@ -202,7 +202,7 @@ if __name__ == '__main__':
             print(experiment_dir, "ALREADY FINISHED TRAINING IN,", scen.upper(), "SKIPPING TO THE NEXT STAGE")
             continue
 
-        num_envs = 2
+        num_envs = 16
         print("INITIALIZING", num_envs, scen.upper(), "ENVIRONMENTS...", end="")
         if num_envs > 1:
             env = SubprocVecEnv(
@@ -223,7 +223,7 @@ if __name__ == '__main__':
             agent = PPO.load(continual_model, _init_setup_model=True, env=env, **hyperparams)
         print("DONE")
 
-        best_mean_reward, n_steps, timesteps = -np.inf, 0, int(30e6)# + i*150e3)
+        best_mean_reward, n_steps, timesteps = -np.inf, 0, int(100e6)# + i*150e3)
         print("TRAINING FOR", timesteps, "TIMESTEPS")
         agent.learn(total_timesteps=timesteps, tb_log_name="PPO2", callback=callback2)
         print("FINISHED TRAINING AGENT IN", scen.upper())

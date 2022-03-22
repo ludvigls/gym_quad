@@ -5,7 +5,7 @@ from gym.envs.registration import register
 
 pid_pathcolav_config = {
     "step_size": 0.05,#0.10,
-    "max_t_steps": 100000,
+    "max_t_steps": 40000,
     "min_reward": -1000,
     "n_obs_states": 12,
     "cruise_speed": 1.5,

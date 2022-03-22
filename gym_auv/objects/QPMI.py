@@ -220,13 +220,11 @@ class QPMI():
 
 def generate_random_waypoints(nwaypoints,scen):
     waypoints = [np.array([0,0,0])]
-    angle=np.pi/4
-
     if scen == '3d':
         for i in range(nwaypoints-1):
             distance = 50
-            azimuth = np.random.uniform(-angle, angle)
-            elevation = np.random.uniform(-angle, angle)
+            azimuth = np.random.uniform(-np.pi/4, np.pi/4)
+            elevation = np.random.uniform(-np.pi/4, np.pi/4)
             x = waypoints[i][0] + distance*np.cos(azimuth)*np.cos(elevation)
             y = waypoints[i][1] + distance*np.sin(azimuth)*np.cos(elevation)
             z = waypoints[i][2] - distance*np.sin(elevation)
@@ -236,8 +234,8 @@ def generate_random_waypoints(nwaypoints,scen):
     elif scen =='horizontal':
         for i in range(nwaypoints-1):
             distance = 50
-            azimuth = np.random.uniform(-angle, angle)
-            elevation = np.random.uniform(-angle, angle)
+            azimuth = np.random.uniform(-np.pi/4, np.pi/4)
+            elevation = np.random.uniform(-np.pi/4, np.pi/4)
             x = waypoints[i][0] + distance*np.cos(azimuth)*np.cos(elevation)
             y = waypoints[i][1] + distance*np.sin(azimuth)*np.cos(elevation)
             z = 0#waypoints[i][2] - distance*np.sin(elevation)
@@ -247,8 +245,8 @@ def generate_random_waypoints(nwaypoints,scen):
     elif scen=='line':
         for i in range(nwaypoints-1):
             distance = 50
-            azimuth = np.random.uniform(-angle, angle)
-            elevation = np.random.uniform(-angle, angle)
+            azimuth = np.random.uniform(-np.pi/4, np.pi/4)
+            elevation = np.random.uniform(-np.pi/4, np.pi/4)
             x = waypoints[i][0] + distance*np.cos(azimuth)*np.cos(elevation)
             y = 0#waypoints[i][1] + distance*np.sin(azimuth)*np.cos(elevation)
             z = 0#waypoints[i][2] - distance*np.sin(elevation)
@@ -257,6 +255,7 @@ def generate_random_waypoints(nwaypoints,scen):
             waypoints.append(wp)
     elif scen=='3d_new':
         distance=50
+        angle=np.pi/4
         a_start_angle=np.random.uniform(-np.pi,np.pi)
         e_start_angle=np.random.uniform(-np.pi,np.pi) 
         for i in range(nwaypoints-1):
@@ -337,7 +336,7 @@ def generate_random_waypoints(nwaypoints,scen):
     return np.array(waypoints)
 
 def helix_param(t):
-    k=100#125
+    k=125
     #return k*(np.cos(3.14-t)+1),k*(np.sin(3.14-t)),-5*t
     return k*(np.cos(t)),k*(np.sin(t)),-5*t
 if __name__ == "__main__":
