@@ -132,7 +132,7 @@ from utils import parse_experiment_info
 
 from typing import Callable
 
-scenarios = ["line","horizontal","3d","3d_new"]#, "proficient", "advanced", "expert"]
+scenarios = ["line","horizontal","3d","3d_new", "intermediate","proficient", "advanced", "expert"]
 
 """
 hyperparams = {

@@ -508,7 +508,7 @@ class PathColav3d(gym.Env):
 
     def scenario_intermediate(self):
         #print("\t\t\tfunc scenario_intermediate init")
-        initial_state = self.scenario_beginner()
+        initial_state = self.scenario_3d_new()
         #print("\t\t\tfunc scenario_intermediate got beginner")
         rad = np.random.uniform(4, 10)
         pos = self.path(self.path.length/2)
