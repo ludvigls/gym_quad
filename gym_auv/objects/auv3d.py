@@ -65,7 +65,7 @@ class AUV3D():
         self.input = np.zeros(4)
         self.position_dot = np.zeros(3)
         self.safety_radius = safety_radius
-        self.safety_radius = 1
+        self.safety_radius = 1#1
 
 
     def step(self, action, nu_c):

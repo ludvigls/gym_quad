@@ -1,3 +1,4 @@
+from turtle import up
 import numpy as np
 import gym
 import gym_auv.utils.geomutils as geom
@@ -6,7 +7,7 @@ import skimage.measure
 
 from gym_auv.objects.auv3d import AUV3D
 from gym_auv.objects.current3d import Current
-from gym_auv.objects.QPMI import QPMI, generate_random_waypoints,helix_param
+from gym_auv.objects.QPMI import QPMI, generate_random_waypoints#,helix_param
 from gym_auv.objects.path3d import Path3D
 from gym_auv.objects.obstacle3d import Obstacle
 from gym_auv.utils.controllers import PI, PID
@@ -25,16 +26,43 @@ class PathColav3d(gym.Env):
     def __init__(self, env_config, scenario="line"):
         for key in env_config:
             setattr(self, key, env_config[key])
-        self.n_observations = self.n_obs_states + self.n_obs_errors + self.n_obs_inputs #+ self.sensor_input_size[0]*self.sensor_input_size[1]
+        self.n_observations = self.n_obs_states + self.n_obs_errors + self.n_obs_inputs + self.sensor_input_size[0]*self.sensor_input_size[1]
         self.action_space = gym.spaces.Box(low=np.array([-1, -1,-1,-1], dtype=np.float32),
                                            high=np.array([1]*self.n_actuators, dtype=np.float32),
                                            dtype=np.float32)
-        self.observation_space = gym.spaces.Box(low=np.array([-1]*self.n_observations, dtype=np.float32),
-                                                high=np.array([1]*self.n_observations, dtype=np.float32),
-                                                dtype=np.float32)
+        #self.observation_space = gym.spaces.Box(low=np.array([-1]*self.n_observations, dtype=np.float32),
+        #                                        high=np.array([1]*self.n_observations, dtype=np.float32),
+        #                                        dtype=np.float32)
+        
+        #self._action_space = gym.spaces.Box(
+        #    low=np.array([-1, -1]),
+        #    high=np.array([1, 1]),
+        #    dtype=np.float32
+        #)
+
+        self.perception_space = gym.spaces.Box(
+            low=0,
+            high=1,
+            shape=(1,self.sensor_suite[0],self.sensor_suite[1]),
+            dtype=np.float32
+        )
+        self.navigation_space = gym.spaces.Box(
+            low=-np.inf, # Try -1
+            high=np.inf, # Try +1
+            shape=(1, self.n_obs_states + self.n_obs_errors + self.n_obs_inputs),
+            dtype=np.float32
+        )
+        self.observation_space = gym.spaces.Dict({
+            'perception': self.perception_space,
+            'navigation': self.navigation_space
+        })
         
         self.scenario = scenario
-        
+        if self.scenario=='line' or self.scenario=='horizontal' or self.scenario=='3d' or self.scenario=='3d_new':
+            self.update_sensor_step=10000
+        else:
+            self.update_sensor_step=1
+
         self.n_sensor_readings = self.sensor_suite[0]*self.sensor_suite[1]
         max_horizontal_angle = self.sensor_span[0]/2
         max_vertical_angle = self.sensor_span[1]/2
@@ -45,10 +73,12 @@ class PathColav3d(gym.Env):
         self.scenario_switch = {
             # Training scenarios
             "line": self.scenario_line,
+            "line_new": self.scenario_line_new,
             "horizontal": self.scenario_horizontal,
+            "horizontal_new": self.scenario_horizontal_new,
             "3d": self.scenario_3d,
             "3d_new": self.scenario_3d_new,
-            "helix": self.scenario_helix,
+            #"helix": self.scenario_helix,
             "intermediate": self.scenario_intermediate,
             "proficient": self.scenario_proficient,
             "advanced": self.scenario_advanced,
@@ -65,7 +95,10 @@ class PathColav3d(gym.Env):
 
         self.reset()
 
-
+    def get_stats(self):
+        #print({"reward_steady":self.reward_steady_sum,"reward_path_following":self.reward_path_following_sum,"obs":self.past_obs,"states":self.past_states,"errors":self.past_errors})
+        return {"reward_steady":self.reward_steady_sum,"reward_path_following":self.reward_path_following_sum}#,"obs":self.past_obs,"states":self.past_states,"errors":self.past_errors}
+        
     def reset(self):
         """
         Resets environment to initial state. 
@@ -95,11 +128,14 @@ class PathColav3d(gym.Env):
         self.past_actions = []
         self.past_errors = []
         self.past_obs = []
+        self.past_prog=[]
         self.current_history = []
         self.time = []
         self.total_t_steps = 0
         self.reward = 0
-
+        self.reward_steady_sum=0
+        self.reward_path_following_sum=0
+        self.progression=[]
         self.generate_environment()
         #print("\tENVIRONMENT GENERATED")
         self.update_control_errors()
@@ -164,7 +200,10 @@ class PathColav3d(gym.Env):
 
         self.vessel.step(action, nu_c)
         self.past_states.append(np.copy(self.vessel.state))
-        self.past_errors.append(np.array([self.u_error, self.chi_error, self.e, self.upsilon_error, self.h]))
+        
+
+        self.past_errors.append(np.array([self.e,self.h]))#[self.u_error, self.chi_error, self.e, self.upsilon_error, self.h]))
+        
         self.past_actions.append(self.vessel.input)
 
         if self.path:
@@ -183,12 +222,11 @@ class PathColav3d(gym.Env):
 
         # Make next observation
         self.observation = self.observe(nu_c)
-        self.past_obs.append(self.observation)
-
+        self.past_obs.append(self.observation['navigation'])
+        self.past_prog.append([self.prog/self.path.length])
         # Save sim time info
         self.total_t_steps += 1
         self.time.append(self.total_t_steps*self.step_size)
-        
         return self.observation, step_reward, done, info
 
 
@@ -196,30 +234,42 @@ class PathColav3d(gym.Env):
         """
         Returns observations of the environment. 
         """
-        obs = np.zeros((self.n_observations,))
-        obs[0] = np.clip(self.vessel.relative_velocity[0] / 2, -1, 1)
-        obs[1] = np.clip(self.vessel.relative_velocity[1] / 0.3, -1, 1)
-        obs[2] = np.clip(self.vessel.relative_velocity[2] / 0.3, -1, 1)
-        obs[3] = np.clip(self.vessel.roll / np.pi, -1, 1)
-        obs[4] = np.clip(self.vessel.pitch / np.pi, -1, 1)
-        obs[5] = np.clip(self.vessel.heading / np.pi, -1, 1)
-        obs[6] = np.clip(self.vessel.angular_velocity[0] / 1.2, -1, 1)
-        obs[7] = np.clip(self.vessel.angular_velocity[1] / 0.4, -1, 1)
-        obs[8] = np.clip(self.vessel.angular_velocity[2] / 0.4, -1, 1)
-        obs[9] = np.clip(nu_c[0] / 1, -1, 1)
-        obs[10] = np.clip(nu_c[1] / 1, -1, 1)
-        obs[11] = np.clip(nu_c[2] / 1, -1, 1)
-        obs[12] = self.chi_error
-        obs[13] = self.upsilon_error
+        
+        chi_error_1,upsilon_error_1=self.get_chi_upsilon(1)
+        chi_error_5,upsilon_error_5=self.get_chi_upsilon(5)
+        #print(chi_error_1,upsilon_error_1,chi_error_5,upsilon_error_5)
+        obs = np.zeros(self.n_obs_states + self.n_obs_errors + self.n_obs_inputs)
+        obs[0] = self.vessel.relative_velocity[0]#np.clip(self.vessel.relative_velocity[0] / 2, -1, 1)
+        obs[1] = self.vessel.relative_velocity[1]#np.clip(self.vessel.relative_velocity[1] / 0.3, -1, 1)
+        obs[2] = self.vessel.relative_velocity[2]#np.clip(self.vessel.relative_velocity[2] / 0.3, -1, 1)
+        obs[3] =self.vessel.roll #np.clip(self.vessel.roll / np.pi, -1, 1)
+        obs[4] =self.vessel.pitch#np.clip(self.vessel.pitch / np.pi, -1, 1)
+        obs[5] =self.vessel.heading  #np.clip(self.vessel.heading / np.pi, -1, 1)
+        obs[6] = self.vessel.angular_velocity[0]#np.clip(self.vessel.angular_velocity[0] / 1.2, -1, 1)
+        obs[7] =self.vessel.angular_velocity[1] #np.clip(self.vessel.angular_velocity[1] / 0.4, -1, 1)
+        obs[8] = self.vessel.angular_velocity[2]#np.clip(self.vessel.angular_velocity[2] / 0.4, -1, 1)
+        #obs[9] = np.clip(nu_c[0] / 1, -1, 1)
+        #obs[10] = np.clip(nu_c[1] / 1, -1, 1)
+        #obs[11] = np.clip(nu_c[2] / 1, -1, 1)
+        obs[9] = self.chi_error
+        obs[10] = self.upsilon_error
+        obs[11] = chi_error_1
+        obs[12] = upsilon_error_1
+        obs[13] = chi_error_5
+        obs[14] = upsilon_error_5
+        obs[15]=self.e
+        obs[16]=self.h
 
         # Update nearby obstacles and calculate distances
-        #if self.total_t_steps % self.update_sensor_step == 0:
-            #self.update_nearby_obstacles()
-            #self.update_sensor_readings()
-            #self.sonar_observations = skimage.measure.block_reduce(self.sensor_readings, (2,2), np.max)
-            #self.update_sensor_readings_with_plots() #(Debugging)
-        #obs[14:] = self.sonar_observations.flatten()
-        return obs
+        if True:#self.total_t_steps % self.update_sensor_step == 0:
+            self.update_nearby_obstacles()
+            self.update_sensor_readings()
+            #self.sonar_observations = skimage.measure.block_reduce(self.sensor_readings, (2,2), np.max) #remove
+            #if len(self.nearby_obstacles)>0:
+            #    print(self.sensor_readings)
+                #self.update_sensor_readings_with_plots() #(Debugging)
+        #obs['perception'] = self.sonar_observations.flatten()
+        return {'perception':[self.sensor_readings], 'navigation': [obs]} #return dict of perception and navigation
 
 
     def step_reward(self, obs, action):
@@ -229,42 +279,56 @@ class PathColav3d(gym.Env):
         done = False
         step_reward = 0 
 
-        reward_roll = self.vessel.roll**2*self.reward_roll + self.vessel.angular_velocity[0]**2*self.reward_rollrate
+        #reward_roll = self.vessel.roll**2*self.reward_roll + self.vessel.angular_velocity[0]**2*self.reward_rollrate
         #reward_control = action[1]**2*self.reward_use_rudder + action[2]**2*self.reward_use_elevator
-        reward_steady=self.reward_rollrate*(self.vessel.angular_velocity[0]**2+self.vessel.angular_velocity[1]**2+self.vessel.angular_velocity[2]**2)#*0.33
+        reward_steady=0
+        for i in range(3):
+            if np.abs(self.vessel.angular_velocity[i])>4*np.pi:
+                reward_steady+=self.reward_rollrate*self.vessel.angular_velocity[i]**2
+
+        #reward_steady=self.reward_rollrate*(self.vessel.angular_velocity[0]**2+self.vessel.angular_velocity[1]**2+self.vessel.angular_velocity[2]**2)#*0.33
         reward_path_following = 3*(self.chi_error**2*self.reward_heading_error + self.upsilon_error**2*self.reward_pitch_error)*2
-        #reward_collision_avoidance = self.penalize_obstacle_closeness()
-        
+        reward_collision_avoidance = self.penalize_obstacle_closeness()
         #print(reward_steady)
         #print(self.lambda_reward*reward_path_following)
-        #print()
-        step_reward = self.lambda_reward*reward_path_following + reward_steady #(1-self.lambda_reward)*reward_collision_avoidance \
+        #if len(self.nearby_obstacles)>0:
+        #    print((1-self.lambda_reward)*reward_collision_avoidance)
+        #rint()
+        self.reward_steady_sum+=reward_steady
+        self.reward_path_following_sum+=self.lambda_reward*reward_path_following
+        step_reward = self.lambda_reward*reward_path_following + reward_steady+(1-self.lambda_reward)*reward_collision_avoidance #\
                     #+ reward_roll 
         self.reward += step_reward
     
         # Check collision
-        #for obstacle in self.nearby_obstacles:
-        #    if np.linalg.norm(obstacle.position - self.vessel.position) <= obstacle.radius + self.vessel.safety_radius:
-        #        self.collided = True
+        for obstacle in self.nearby_obstacles:
+            if np.linalg.norm(obstacle.position - self.vessel.position) <= obstacle.radius + self.vessel.safety_radius:
+                self.collided = True
         
         end_cond_1 = self.reward < self.min_reward
         end_cond_2 = self.total_t_steps >= self.max_t_steps
         end_cond_3 = np.linalg.norm(self.path.get_endpoint()-self.vessel.position) < self.accept_rad and self.waypoint_index == self.n_waypoints-2
         end_cond_4 = abs(self.prog - self.path.length) <= self.accept_rad/2.0
-
         if end_cond_1 or end_cond_2 or end_cond_3 or end_cond_4:
             if end_cond_3:
                 print("AUV reached target!")
                 self.success = True
-            #elif self.collided:
-            #    print("AUV collided!")
-            #    #print(np.round(self.sensor_readings,2))
-            #    self.success = False
+            elif self.collided:
+                print("AUV collided! (reward function)")
+                #print(np.round(self.sensor_readings,2))
+                self.success = False
             #print("Episode finished after {} timesteps with reward: {}".format(self.total_t_steps, self.reward.round(1)))
             done = True
         return done, step_reward
 
-
+    def get_chi_upsilon(self,la_dist):
+        chi_r = np.arctan2(-self.e, la_dist)
+        upsilon_r = np.arctan2(self.h, np.sqrt(self.e**2 + la_dist**2))
+        chi_d = self.chi_p + chi_r
+        upsilon_d =self.upsilon_p + upsilon_r
+        chi_error = np.clip(geom.ssa(self.vessel.chi - chi_d)/np.pi, -1, 1)
+        upsilon_error = np.clip(geom.ssa(self.vessel.upsilon - upsilon_d)/np.pi, -1, 1)
+        return chi_error,upsilon_error
     def update_control_errors(self):
         # Update cruise speed error
         self.u_error = np.clip((self.cruise_speed - self.vessel.relative_velocity[0])/2, -1, 1)
@@ -273,28 +337,23 @@ class PathColav3d(gym.Env):
         self.upsilon_error = 0.0
         self.h = 0.0
 
+        self.progression.append(self.prog/self.path.length)
         # Get path course and elevation
         s = self.prog
-        chi_p, upsilon_p = self.path.get_direction_angles(s)
+        self.chi_p, self.upsilon_p = self.path.get_direction_angles(s)
 
         # Calculate tracking errors
-        SF_rotation = geom.Rzyx(0,upsilon_p,chi_p)
+        SF_rotation = geom.Rzyx(0,self.upsilon_p,self.chi_p)
+
         epsilon = np.transpose(SF_rotation).dot(self.vessel.position-self.path(self.prog))
         e = epsilon[1]
         h = epsilon[2]
-
         # Calculate course and elevation errors from tracking errors
-        chi_r = np.arctan2(-e, self.la_dist)
-        upsilon_r = np.arctan2(h, np.sqrt(e**2 + self.la_dist**2))
-        chi_d = chi_p + chi_r
-        upsilon_d = upsilon_p + upsilon_r
-        self.chi_error = np.clip(geom.ssa(self.vessel.chi - chi_d)/np.pi, -1, 1)
         #self.e = np.clip(e/12, -1, 1)
         self.e = e
-        self.upsilon_error = np.clip(geom.ssa(self.vessel.upsilon - upsilon_d)/np.pi, -1, 1)
         #self.h = np.clip(h/12, -1, 1)
         self.h = h
-
+        self.chi_error,self.upsilon_error=self.get_chi_upsilon(self.la_dist)
 
     def update_nearby_obstacles(self):
         """
@@ -337,21 +396,23 @@ class PathColav3d(gym.Env):
         self.sensor_readings = np.zeros(shape=self.sensor_suite, dtype=float)
         ax = self.plot3D()
         ax2 = self.plot3D()
-        for obstacle in self.nearby_obstacles:
-            for i in range(self.sensor_suite[0]):
-                alpha = self.vessel.heading + self.sectors_horizontal[i]
-                for j in range(self.sensor_suite[1]):
-                    beta = self.vessel.pitch + self.sectors_vertical[j]
-                    s, closeness = self.calculate_object_distance(alpha, beta, obstacle)
-                    self.sensor_readings[j,i] = max(closeness, self.sensor_readings[j,i])              
-                    color = "#05f07a" if s >= self.sonar_range else "#a61717"
-                    s = np.linspace(0, s, 100)
-                    x = self.vessel.position[0] + s*np.cos(alpha)*np.cos(beta)
-                    y = self.vessel.position[1] + s*np.sin(alpha)*np.cos(beta)
-                    z = self.vessel.position[2] - s*np.sin(beta)
-                    ax.plot3D(x, y, z, color=color)
-                    if color == "#a61717": ax2.plot3D(x, y, z, color=color)
-                plt.rc('lines', linewidth=3)
+        #for obstacle in self.nearby_obstacles:
+        for i in range(self.sensor_suite[0]):
+            alpha = self.vessel.heading + self.sectors_horizontal[i]
+            for j in range(self.sensor_suite[1]):
+                beta = self.vessel.pitch + self.sectors_vertical[j]
+                #s, closeness = self.calculate_object_distance(alpha, beta, obstacle)
+                s=25
+                #self.sensor_readings[j,i] = max(closeness, self.sensor_readings[j,i])              
+                color = "#05f07a"# if s >= self.sonar_range else "#a61717"
+                s = np.linspace(0, s, 100)
+                x = self.vessel.position[0] + s*np.cos(alpha)*np.cos(beta)
+                y = self.vessel.position[1] + s*np.sin(alpha)*np.cos(beta)
+                z = self.vessel.position[2] - s*np.sin(beta)
+                ax.plot3D(x, y, z, color=color)
+                #if color == "#a61717": 
+                ax2.plot3D(x, y, z, color=color)
+            plt.rc('lines', linewidth=3)
         ax.set_xlabel(xlabel="North [m]", fontsize=14)
         ax.set_ylabel(ylabel="East [m]", fontsize=14)
         ax.set_zlabel(zlabel="Down [m]", fontsize=14)
@@ -454,20 +515,21 @@ class PathColav3d(gym.Env):
             if np.linalg.norm(obstacle.position - new_obstacle.position) < new_obstacle.radius + obstacle.radius + 5:
                 overlaps = True
         return overlaps
-    def scenario_helix(self):
-        initial_state = np.zeros(6)
-        self.current = Current(mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0) #Current object with zero velocity
-        waypoints = generate_random_waypoints(self.n_waypoints,'helix')
-        self.path = QPMI(waypoints)
-        init_pos = helix_param(0)
-        #init_attitude = np.array([0, self.path.get_direction_angles(0)[1], self.path.get_direction_angles(0)[0]])
-        init_attitude=np.array([0,0,self.path.get_direction_angles(0)[0]])
-        initial_state = np.hstack([init_pos, init_attitude])
-        return initial_state
+
     def scenario_line(self):
         initial_state = np.zeros(6)
         self.current = Current(mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0) #Current object with zero velocity
         waypoints = generate_random_waypoints(self.n_waypoints,'line')
+        self.path = QPMI(waypoints)
+        init_pos = [np.random.uniform(0,2)*(-5),0, 0]#np.random.normal(0,1)*5]
+        #init_attitude = np.array([0, self.path.get_direction_angles(0)[1], self.path.get_direction_angles(0)[0]])
+        init_attitude=np.array([0,0,self.path.get_direction_angles(0)[0]])
+        initial_state = np.hstack([init_pos, init_attitude])
+        return initial_state
+    def scenario_line_new(self):
+        initial_state = np.zeros(6)
+        self.current = Current(mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0) #Current object with zero velocity
+        waypoints = generate_random_waypoints(self.n_waypoints,'line_new')
         self.path = QPMI(waypoints)
         init_pos = [np.random.uniform(0,2)*(-5),0, 0]#np.random.normal(0,1)*5]
         #init_attitude = np.array([0, self.path.get_direction_angles(0)[1], self.path.get_direction_angles(0)[0]])
@@ -484,17 +546,17 @@ class PathColav3d(gym.Env):
         init_attitude=np.array([0,0,self.path.get_direction_angles(0)[0]])
         initial_state = np.hstack([init_pos, init_attitude])
         return initial_state
-
-    def scenario_3d_new(self):
+    def scenario_horizontal_new(self):
         initial_state = np.zeros(6)
         self.current = Current(mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0) #Current object with zero velocity
-        waypoints = generate_random_waypoints(self.n_waypoints,'3d_new')
+        waypoints = generate_random_waypoints(self.n_waypoints,'horizontal_new')
         self.path = QPMI(waypoints)
-        init_pos = [np.random.uniform(0,2)*(-5), np.random.normal(0,1)*5, np.random.normal(0,1)*5]
+        init_pos = [np.random.uniform(0,2)*(-5), np.random.normal(0,1)*5, 0]#np.random.normal(0,1)*5]
         #init_attitude = np.array([0, self.path.get_direction_angles(0)[1], self.path.get_direction_angles(0)[0]])
         init_attitude=np.array([0,0,self.path.get_direction_angles(0)[0]])
         initial_state = np.hstack([init_pos, init_attitude])
         return initial_state
+
     def scenario_3d(self):
         initial_state = np.zeros(6)
         self.current = Current(mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0) #Current object with zero velocity
@@ -505,10 +567,32 @@ class PathColav3d(gym.Env):
         init_attitude=np.array([0,0,self.path.get_direction_angles(0)[0]])
         initial_state = np.hstack([init_pos, init_attitude])
         return initial_state
-
+    def scenario_3d_new(self):
+        initial_state = np.zeros(6)
+        self.current = Current(mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0) #Current object with zero velocity
+        waypoints = generate_random_waypoints(self.n_waypoints,'3d_new')
+        self.path = QPMI(waypoints)
+        init_pos=[0,0,0]
+        #init_pos = [np.random.uniform(0,2)*(-5), np.random.normal(0,1)*5, np.random.normal(0,1)*5]
+        #init_attitude = np.array([0, self.path.get_direction_angles(0)[1], self.path.get_direction_angles(0)[0]])
+        init_attitude=np.array([0,0,self.path.get_direction_angles(0)[0]])
+        initial_state = np.hstack([init_pos, init_attitude])
+        return initial_state
+    """
+    def scenario_helix(self):
+        initial_state = np.zeros(6)
+        self.current = Current(mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0) #Current object with zero velocity
+        waypoints = generate_random_waypoints(self.n_waypoints,'helix')
+        self.path = QPMI(waypoints)
+        init_pos = helix_param(0)
+        #init_attitude = np.array([0, self.path.get_direction_angles(0)[1], self.path.get_direction_angles(0)[0]])
+        init_attitude=np.array([0,0,self.path.get_direction_angles(0)[0]])
+        initial_state = np.hstack([init_pos, init_attitude])
+        return initial_state
+    """
     def scenario_intermediate(self):
         #print("\t\t\tfunc scenario_intermediate init")
-        initial_state = self.scenario_beginner()
+        initial_state = self.scenario_3d_new()
         #print("\t\t\tfunc scenario_intermediate got beginner")
         rad = np.random.uniform(4, 10)
         pos = self.path(self.path.length/2)
